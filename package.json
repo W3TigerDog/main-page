@@ -1,7 +1,7 @@
 {
   "name": "main-page",
   "version": "1.0.0",
-  "description": "W3TIGERDOG Render Live Dashboard",
+  "private": true,
   "type": "module",
   "main": "server.js",
   "engines": {
@@ -11,6 +11,9 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "ws": "^8.18.0"
   }
 }

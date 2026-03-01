@@ -4,12 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>W3TIGERDOG · Web3 Neon Dashboard</title>
-  <meta name="description" content="W3TIGERDOG Web3 Neon Dashboard: live crypto prices, Google search, world timezones, theme switcher, and floating particles." />
+  <meta name="description" content="Web3 neon dashboard with WebSocket live feed, price history charts, 24h OHLC, and top gainers." />
 
-  <!-- Helps reduce stale caching on some networks/CDNs -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
     :root{
@@ -20,11 +22,10 @@
       --text:#ECF2FF;
       --muted:#9FB0D0;
 
-      /* default theme (Cyan) */
-      --neon1:#22d3ee; /* primary */
-      --neon2:#a78bfa; /* secondary */
-      --neon3:#34d399; /* positive */
-      --neon4:#fb7185; /* negative */
+      --neon1:#22d3ee;
+      --neon2:#a78bfa;
+      --neon3:#34d399;
+      --neon4:#fb7185;
       --warn:#fbbf24;
 
       --shadow: 0 24px 85px rgba(0,0,0,.62);
@@ -51,33 +52,16 @@
       overflow-x:hidden;
     }
 
-    /* Subtle neon grid + scanline overlay */
     .fx{
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      z-index:0;
-      opacity:.95;
+      position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.95;
     }
     .fx:before{
       content:"";
       position:absolute; inset:-2px;
       background:
         linear-gradient(to bottom, rgba(255,255,255,.05), transparent 35%, transparent 65%, rgba(255,255,255,.03)),
-        repeating-linear-gradient(
-          90deg,
-          color-mix(in srgb, var(--neon1) 10%, transparent) 0px,
-          color-mix(in srgb, var(--neon1) 10%, transparent) 1px,
-          transparent 1px,
-          transparent 56px
-        ),
-        repeating-linear-gradient(
-          0deg,
-          color-mix(in srgb, var(--neon2) 9%, transparent) 0px,
-          color-mix(in srgb, var(--neon2) 9%, transparent) 1px,
-          transparent 1px,
-          transparent 56px
-        );
+        repeating-linear-gradient(90deg, color-mix(in srgb, var(--neon1) 10%, transparent) 0px, color-mix(in srgb, var(--neon1) 10%, transparent) 1px, transparent 1px, transparent 56px),
+        repeating-linear-gradient(0deg,  color-mix(in srgb, var(--neon2) 9%, transparent)  0px, color-mix(in srgb, var(--neon2) 9%, transparent)  1px, transparent 1px, transparent 56px);
       mix-blend-mode: screen;
       filter: blur(.25px);
       opacity:.35;
@@ -92,95 +76,42 @@
       opacity:.55;
     }
 
-    /* Particles canvas */
-    #particles{
-      position:fixed;
-      inset:0;
-      z-index:0;
-      pointer-events:none;
-      opacity:.85;
-    }
+    #particles{ position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.85; }
 
     a{ color:inherit; text-decoration:none; }
-    .wrap{
-      position:relative;
-      z-index:1;
-      max-width:1150px;
-      margin:0 auto;
-      padding:22px 16px 76px;
-    }
+    .wrap{ position:relative; z-index:1; max-width:1150px; margin:0 auto; padding:22px 16px 76px; }
 
-    /* Top bar */
-    .top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:10px 0 16px;
-    }
-    .brand{
-      display:flex; align-items:center; gap:10px;
-      font-weight:950;
-      letter-spacing:.45px;
-    }
+    .top{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0 16px; }
+    .brand{ display:flex; align-items:center; gap:10px; font-weight:950; letter-spacing:.45px; }
     .orb{
       width:12px; height:12px; border-radius:999px;
       background: linear-gradient(135deg, var(--neon1), var(--neon2));
-      box-shadow:
-        0 0 0 7px color-mix(in srgb, var(--neon1) 20%, transparent),
-        0 0 24px color-mix(in srgb, var(--neon2) 32%, transparent),
-        0 0 40px color-mix(in srgb, var(--neon1) 12%, transparent);
+      box-shadow: 0 0 0 7px color-mix(in srgb, var(--neon1) 20%, transparent), 0 0 24px color-mix(in srgb, var(--neon2) 32%, transparent), 0 0 40px color-mix(in srgb, var(--neon1) 12%, transparent);
     }
 
-    .nav{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
+    .nav{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .nav a, .nav button, .nav select{
-      font-size:13px;
-      color:var(--muted);
-      padding:8px 10px;
-      border:1px solid var(--line);
-      border-radius:12px;
-      background: rgba(255,255,255,.02);
+      font-size:13px; color:var(--muted);
+      padding:8px 10px; border:1px solid var(--line);
+      border-radius:12px; background: rgba(255,255,255,.02);
       backdrop-filter: blur(8px);
-      cursor:pointer;
-      font-family:inherit;
-    }
-    .nav select{
-      padding:8px 10px;
-      outline:none;
+      cursor:pointer; font-family:inherit;
     }
     .nav .pill{
-      border-radius:999px;
-      padding:7px 10px;
-      font-weight:850;
-      color: rgba(236,242,255,.86);
+      border-radius:999px; padding:7px 10px; font-weight:850; color: rgba(236,242,255,.86);
       border-color: rgba(255,255,255,.12);
       background: linear-gradient(135deg, color-mix(in srgb, var(--neon1) 18%, transparent), color-mix(in srgb, var(--neon2) 14%, transparent));
       box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
     }
     .nav .themeLabel{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
+      display:inline-flex; align-items:center; gap:8px; padding:7px 10px; border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.18);
       color: rgba(236,242,255,.88);
-      font-weight:900;
-      font-size:12px;
+      font-weight:900; font-size:12px;
     }
-    .swatch{
-      width:10px; height:10px; border-radius:999px;
-      background: linear-gradient(135deg, var(--neon1), var(--neon2));
-      box-shadow: 0 0 12px color-mix(in srgb, var(--neon1) 30%, transparent);
-    }
+    .swatch{ width:10px; height:10px; border-radius:999px; background: linear-gradient(135deg, var(--neon1), var(--neon2)); box-shadow: 0 0 12px color-mix(in srgb, var(--neon1) 30%, transparent); }
 
-    /* Hero */
     .hero{
       border:1px solid var(--line);
       border-radius:var(--r26);
@@ -200,123 +131,48 @@
       pointer-events:none;
     }
 
-    .heroInner{
-      position:relative;
-      padding:18px;
-      display:grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap:14px;
-      align-items:stretch;
-    }
-
-    .titleRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    h1{
-      margin:0;
-      font-size:30px;
-      letter-spacing:.15px;
-      line-height:1.12;
-      text-shadow: 0 0 22px color-mix(in srgb, var(--neon1) 18%, transparent);
-    }
+    .heroInner{ position:relative; padding:18px; display:grid; grid-template-columns: 1.1fr .9fr; gap:14px; align-items:stretch; }
+    .titleRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    h1{ margin:0; font-size:30px; letter-spacing:.15px; line-height:1.12; text-shadow: 0 0 22px color-mix(in srgb, var(--neon1) 18%, transparent); }
 
     .tag{
-      font-size:12px;
-      color:rgba(159,176,208,.92);
-      padding:7px 10px;
-      border:1px solid rgba(255,255,255,.12);
+      font-size:12px; color:rgba(159,176,208,.92);
+      padding:7px 10px; border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.03);
-      border-radius:999px;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
+      border-radius:999px; display:inline-flex; align-items:center; gap:8px;
     }
-    .spark{
-      width:8px; height:8px; border-radius:999px;
-      background: linear-gradient(135deg, var(--neon3), var(--neon1));
-      box-shadow: 0 0 14px color-mix(in srgb, var(--neon3) 45%, transparent);
-    }
-    .sub{
-      margin-top:8px;
-      color:rgba(159,176,208,.95);
-      line-height:1.65;
-      font-size:13px;
-      max-width:68ch;
-    }
+    .spark{ width:8px; height:8px; border-radius:999px; background: linear-gradient(135deg, var(--neon3), var(--neon1)); box-shadow: 0 0 14px color-mix(in srgb, var(--neon3) 45%, transparent); }
 
-    .badges{
-      margin-top:12px;
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
+    .sub{ margin-top:8px; color:rgba(159,176,208,.95); line-height:1.65; font-size:13px; max-width:68ch; }
+
+    .badges{ margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
     .badge{
-      font-size:12px;
-      color:rgba(159,176,208,.92);
-      padding:7px 10px;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:999px;
-      background: color-mix(in srgb, var(--neon1) 8%, rgba(255,255,255,.03));
+      font-size:12px; color:rgba(159,176,208,.92);
+      padding:7px 10px; border:1px solid rgba(255,255,255,.12);
+      border-radius:999px; background: color-mix(in srgb, var(--neon1) 8%, rgba(255,255,255,.03));
     }
-    .cta{
-      margin-top:14px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
+    .cta{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .btn{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 12px;
-      border-radius:14px;
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 12px; border-radius:14px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.03);
-      font-weight:900;
-      font-size:13px;
+      font-weight:900; font-size:13px;
       box-shadow: var(--shadow2);
     }
     .btn.primary{
       border-color: color-mix(in srgb, var(--neon1) 28%, rgba(255,255,255,.12));
       background: linear-gradient(135deg, color-mix(in srgb, var(--neon1) 22%, transparent), color-mix(in srgb, var(--neon2) 18%, transparent));
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,.04) inset,
-        0 0 22px color-mix(in srgb, var(--neon1) 14%, transparent);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 0 22px color-mix(in srgb, var(--neon1) 14%, transparent);
     }
 
-    /* Status row */
-    .statusRow{
-      margin-top:10px;
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      color:rgba(159,176,208,.9);
-      font-size:12px;
-    }
-    .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.11);
-      background: rgba(255,255,255,.02);
-    }
-    .dot{
-      width:8px; height:8px; border-radius:999px;
-      background: rgba(255,255,255,.30);
-    }
+    .statusRow{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; color:rgba(159,176,208,.9); font-size:12px; }
+    .chip{ display:inline-flex; align-items:center; gap:8px; padding:7px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.11); background: rgba(255,255,255,.02); }
+    .dot{ width:8px; height:8px; border-radius:999px; background: rgba(255,255,255,.30); }
     .dot.live{ background: var(--neon3); box-shadow: 0 0 14px color-mix(in srgb, var(--neon3) 45%, transparent); }
     .dot.warn{ background: var(--warn); box-shadow: 0 0 14px color-mix(in srgb, var(--warn) 35%, transparent); }
     .dot.bad{ background: var(--neon4); box-shadow: 0 0 14px color-mix(in srgb, var(--neon4) 35%, transparent); }
 
-    /* Search */
     .searchCard{
       border:1px solid rgba(255,255,255,.12);
       border-radius:var(--r18);
@@ -337,34 +193,13 @@
       pointer-events:none;
     }
     .searchCard > *{ position:relative; }
-    .searchTitle{
-      font-weight:950;
-      letter-spacing:.2px;
-      margin-bottom:10px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .searchTitle small{
-      color: rgba(159,176,208,.85);
-      font-weight:850;
-      border:1px solid rgba(255,255,255,.10);
-      padding:6px 9px;
-      border-radius:999px;
-      background: rgba(0,0,0,.18);
-    }
-    form{ margin:0; }
-    .searchRow{
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
+    .searchTitle{ font-weight:950; letter-spacing:.2px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .searchTitle small{ color: rgba(159,176,208,.85); font-weight:850; border:1px solid rgba(255,255,255,.10); padding:6px 9px; border-radius:999px; background: rgba(0,0,0,.18); }
+
+    .searchRow{ display:flex; gap:10px; align-items:center; }
     input[type="text"]{
-      flex:1;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
+      flex:1; padding:12px 12px;
+      border-radius:14px; border:1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.26);
       color:var(--text);
       outline:none;
@@ -372,39 +207,20 @@
     }
     input[type="text"]::placeholder{ color: rgba(159,176,208,.75); }
     .go{
-      padding:12px 14px;
-      border-radius:14px;
+      padding:12px 14px; border-radius:14px;
       border:1px solid color-mix(in srgb, var(--neon1) 26%, rgba(255,255,255,.12));
       background: color-mix(in srgb, var(--neon1) 10%, rgba(255,255,255,.03));
-      color:var(--text);
-      font-weight:950;
-      cursor:pointer;
+      color:var(--text); font-weight:950; cursor:pointer;
       box-shadow: 0 0 18px color-mix(in srgb, var(--neon1) 16%, transparent);
     }
-    .mini{
-      margin-top:10px;
-      font-size:12px;
-      color:rgba(159,176,208,.9);
-      line-height:1.45;
-    }
+    .mini{ margin-top:10px; font-size:12px; color:rgba(159,176,208,.9); line-height:1.45; }
     kbd{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 11px;
-      padding: 3px 6px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.22);
-      color: rgba(236,242,255,.9);
+      font-size: 11px; padding: 3px 6px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22); color: rgba(236,242,255,.9);
     }
 
-    /* Main grid */
-    .grid{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns: 1.25fr .75fr;
-      gap:14px;
-      align-items:start;
-    }
+    .grid{ margin-top:14px; display:grid; grid-template-columns: 1.25fr .75fr; gap:14px; align-items:start; }
     .card{
       border:1px solid var(--line);
       border-radius:var(--r26);
@@ -422,40 +238,20 @@
       justify-content:space-between;
       gap:10px;
     }
-    .hint{
-      font-size:12px;
-      color:rgba(159,176,208,.90);
-      font-weight:850;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .hint .dot{
-      width:7px; height:7px;
-    }
+    .hint{ font-size:12px; color:rgba(159,176,208,.90); font-weight:850; display:flex; align-items:center; gap:8px; }
+    .hint .dot{ width:7px; height:7px; }
 
-    /* Controls row inside Prices */
     .controls{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
-      justify-content:space-between;
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
       margin-bottom:10px;
       padding:10px;
       border:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
       border-radius: var(--r18);
     }
-    .controls .left, .controls .right{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
+    .controls .left, .controls .right{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .select2, .textbtn{
-      font-size:12px;
-      color:rgba(159,176,208,.95);
+      font-size:12px; color:rgba(159,176,208,.95);
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.02);
       border-radius: 12px;
@@ -463,10 +259,6 @@
       cursor:pointer;
       font-weight:900;
       font-family:inherit;
-    }
-    .select2{
-      padding:8px 10px;
-      outline:none;
     }
     .textbtn.primary{
       border-color: color-mix(in srgb, var(--neon1) 26%, rgba(255,255,255,.12));
@@ -479,55 +271,73 @@
       color: rgba(236,242,255,.92);
     }
 
-    /* Prices table */
     table{ width:100%; border-collapse:collapse; }
-    th, td{
-      padding:10px 8px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      text-align:left;
-      font-size:13px;
-    }
-    th{
-      color: rgba(236,242,255,.80);
-      font-size:12px;
-      letter-spacing:.3px;
-      font-weight:950;
-    }
+    th, td{ padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.08); text-align:left; font-size:13px; }
+    th{ color: rgba(236,242,255,.80); font-size:12px; letter-spacing:.3px; font-weight:950; }
     td{ color: rgba(236,242,255,.94); }
     .sym{ font-weight:950; letter-spacing:.2px; }
     .muted{ color:rgba(159,176,208,.92); font-size:12px; }
     .chg{
-      font-weight:950;
-      padding:4px 8px;
-      border-radius:999px;
+      font-weight:950; padding:4px 8px; border-radius:999px;
       border:1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.03);
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      font-size:12px;
+      display:inline-flex; align-items:center; gap:6px; font-size:12px;
     }
-    .up{
-      color: var(--neon3);
-      border-color: color-mix(in srgb, var(--neon3) 26%, rgba(255,255,255,.10));
-      background: color-mix(in srgb, var(--neon3) 10%, rgba(255,255,255,.02));
-      box-shadow: 0 0 14px color-mix(in srgb, var(--neon3) 12%, transparent);
-    }
-    .down{
-      color: var(--neon4);
-      border-color: color-mix(in srgb, var(--neon4) 26%, rgba(255,255,255,.10));
-      background: color-mix(in srgb, var(--neon4) 10%, rgba(255,255,255,.02));
-      box-shadow: 0 0 14px color-mix(in srgb, var(--neon4) 10%, transparent);
-    }
+    .up{ color: var(--neon3); border-color: color-mix(in srgb, var(--neon3) 26%, rgba(255,255,255,.10)); background: color-mix(in srgb, var(--neon3) 10%, rgba(255,255,255,.02)); }
+    .down{ color: var(--neon4); border-color: color-mix(in srgb, var(--neon4) 26%, rgba(255,255,255,.10)); background: color-mix(in srgb, var(--neon4) 10%, rgba(255,255,255,.02)); }
     .priceCell{ font-variant-numeric: tabular-nums; }
     .rowName{ display:flex; flex-wrap:wrap; gap:8px; align-items:baseline; }
 
-    /* Timezones */
-    .tzList{
+    .tzList{ display:grid; gap:10px; }
+    .tzItem{
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+      padding:12px 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      border-radius:18px;
+    }
+    .tzItem b{ font-size:13px; }
+    .tzItem .tzMeta{ color:rgba(159,176,208,.92); font-size:12px; margin-top:3px;}
+    .tzItem span{ font-variant-numeric: tabular-nums; font-weight:950; text-align:right; white-space:nowrap; }
+    .pill2{ font-size:11px; color:rgba(159,176,208,.95); padding:6px 9px; border:1px solid rgba(255,255,255,.10); border-radius:999px; background: rgba(0,0,0,.18); }
+
+    /* Chart card */
+    .chartWrap{
+      padding:10px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      border-radius: var(--r18);
+    }
+    .chartRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:10px;
+    }
+    .tabs{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .tab{
+      font-size:12px;
+      font-weight:950;
+      padding:8px 10px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.02);
+      color: rgba(236,242,255,.92);
+      cursor:pointer;
+    }
+    .tab.active{
+      border-color: color-mix(in srgb, var(--neon1) 26%, rgba(255,255,255,.12));
+      background: color-mix(in srgb, var(--neon1) 12%, rgba(255,255,255,.02));
+    }
+    .gainersList{
       display:grid;
       gap:10px;
     }
-    .tzItem{
+    .gainer{
       display:flex;
       justify-content:space-between;
       gap:10px;
@@ -537,37 +347,10 @@
       background: rgba(255,255,255,.03);
       border-radius:18px;
     }
-    .tzItem b{ font-size:13px; }
-    .tzItem .tzMeta{ color:rgba(159,176,208,.92); font-size:12px; margin-top:3px;}
-    .tzItem span{
-      font-variant-numeric: tabular-nums;
-      font-weight:950;
-      text-align:right;
-      white-space:nowrap;
-    }
-    .pill2{
-      font-size:11px;
-      color:rgba(159,176,208,.95);
-      padding:6px 9px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:999px;
-      background: rgba(0,0,0,.18);
-    }
 
-    /* Footer */
-    footer{
-      margin-top:16px;
-      text-align:center;
-      color: rgba(255,255,255,.35);
-      font-size:12px;
-      line-height:1.6;
-    }
+    footer{ margin-top:16px; text-align:center; color: rgba(255,255,255,.35); font-size:12px; line-height:1.6; }
 
-    @media (prefers-reduced-motion: reduce){
-      #particles{ display:none; }
-    }
-
-    /* Responsive */
+    @media (prefers-reduced-motion: reduce){ #particles{ display:none; } }
     @media (max-width: 980px){
       .heroInner{ grid-template-columns: 1fr; }
       .grid{ grid-template-columns: 1fr; }
@@ -588,14 +371,11 @@
 
       <div class="nav">
         <a href="#prices">Prices</a>
-        <a href="#search">Search</a>
+        <a href="#charts">Charts</a>
         <a href="#time">Time</a>
         <a id="navGithub" href="#" target="_blank" rel="noreferrer">GitHub</a>
 
-        <span class="themeLabel" title="Theme">
-          <span class="swatch"></span>
-          Theme
-        </span>
+        <span class="themeLabel" title="Theme"><span class="swatch"></span>Theme</span>
         <select id="themeSelect" aria-label="Theme">
           <option value="cyan">Cyan</option>
           <option value="purple">Purple</option>
@@ -611,30 +391,30 @@
         <div>
           <div class="titleRow">
             <h1>W3TIGERDOG · Web3 Neon Dashboard</h1>
-            <span class="tag"><span class="spark"></span> Live · Neon · Enhanced</span>
+            <span class="tag"><span class="spark"></span> Live · WebSocket · DB</span>
           </div>
 
           <div class="sub">
-            A homepage-grade Web3 console: live major crypto prices, Google search, and world timezones —
-            designed for GitHub Pages as your personal landing / portfolio entry.
+            Real-time Web3 dashboard powered by WebSocket + SQLite storage:
+            live prices, history charts (1m/5m/1h), 24h OHLC, and top gainers.
           </div>
 
           <div class="badges">
-            <span class="badge">JavaScript · Fetch · UI</span>
-            <span class="badge">Web3 Data / Monitoring</span>
-            <span class="badge">No Framework</span>
+            <span class="badge">WebSocket</span>
+            <span class="badge">SQLite</span>
+            <span class="badge">Chart.js</span>
             <span class="badge">Theme + Particles</span>
           </div>
 
           <div class="cta">
             <a class="btn primary" id="btnGithub" href="#" target="_blank" rel="noreferrer">🐙 GitHub</a>
             <a class="btn" href="#prices">📈 Prices</a>
-            <a class="btn" href="#time">🌍 Timezones</a>
+            <a class="btn" href="#charts">📉 Charts</a>
           </div>
 
-          <div class="statusRow" aria-label="status">
+          <div class="statusRow">
             <span class="chip"><span class="dot live" id="dotLive"></span> Status: <b id="statusText">LIVE</b></span>
-            <span class="chip"><span class="dot" id="dotApi"></span> API: <b id="apiText">—</b></span>
+            <span class="chip"><span class="dot" id="dotApi"></span> Feed: <b id="apiText">—</b></span>
             <span class="chip"><span class="dot" id="dotUpd"></span> Updated: <b id="updText">—</b></span>
           </div>
         </div>
@@ -652,32 +432,27 @@
             </div>
           </form>
 
-          <div class="mini">
-            Tip: use <kbd>/</kbd> to focus the search box quickly.
-          </div>
+          <div class="mini">Tip: use <kbd>/</kbd> to focus the search box quickly.</div>
         </div>
       </div>
     </section>
 
     <div class="grid">
+      <!-- Prices -->
       <section class="card" id="prices">
         <h2>
           <span>💎 Major Crypto Prices (Live)</span>
-          <span class="hint"><span class="dot" id="dotPrice"></span><span id="priceStatus">updating…</span></span>
+          <span class="hint"><span class="dot" id="dotPrice"></span><span id="priceStatus">connecting…</span></span>
         </h2>
 
         <div class="controls">
           <div class="left">
-            <select class="select2" id="fiat">
-              <option value="usd">USD</option>
-              <option value="cad">CAD</option>
-            </select>
-            <button class="textbtn primary" id="btnRefresh" type="button">Refresh</button>
-            <button class="textbtn" id="btnAdd" type="button">Add Coin</button>
-            <button class="textbtn danger" id="btnReset" type="button">Reset Watchlist</button>
+            <button class="textbtn primary" id="btnRefresh" type="button">Request Chart Refresh</button>
+            <button class="textbtn" id="btnAdd" type="button">Add Coin (UI only)</button>
+            <button class="textbtn danger" id="btnReset" type="button">Reset Watchlist (UI)</button>
           </div>
           <div class="right">
-            <span class="muted">Watchlist is saved in your browser.</span>
+            <span class="muted">Live feed via WebSocket. Stored in SQLite on server.</span>
           </div>
         </div>
 
@@ -685,7 +460,7 @@
           <thead>
             <tr>
               <th>Asset</th>
-              <th>Price</th>
+              <th>Price (USD)</th>
               <th>24h</th>
               <th class="muted">Updated</th>
             </tr>
@@ -694,97 +469,130 @@
         </table>
 
         <div class="muted" style="margin-top:10px;">
-          Data: CoinGecko <code>/simple/price</code> · If rate-limited, last success is kept.
+          Data source: CoinGecko <code>/simple/price</code> · Server fetches every ~10s, pushes updates via WebSocket.
         </div>
       </section>
 
-      <aside class="card" id="time">
+      <!-- Top Gainers -->
+      <aside class="card" id="gainers">
         <h2>
-          <span>🕒 World Timezones</span>
-          <span class="pill2" id="localTz">Local</span>
+          <span>🔥 Top Gainers (24h, DB)</span>
+          <span class="pill2" id="gainersNote">live</span>
         </h2>
-
-        <div class="tzList" id="tzList"></div>
-
+        <div class="gainersList" id="gainersList"></div>
         <div class="muted" style="margin-top:10px;">
-          Uses your device clock + IANA timezone formatting (updates every second).
+          Computed from stored ticks in SQLite (first vs last in 24h window).
         </div>
       </aside>
     </div>
 
+    <!-- Charts -->
+    <section class="card" id="charts" style="margin-top:14px;">
+      <h2>
+        <span>📉 Price History (Chart.js)</span>
+        <span class="hint"><span class="dot" id="dotChart"></span><span id="chartStatus">waiting…</span></span>
+      </h2>
+
+      <div class="controls" style="margin-bottom:12px;">
+        <div class="left">
+          <select class="select2" id="chartCoin"></select>
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tf="1m" type="button">1m</button>
+            <button class="tab" data-tf="5m" type="button">5m</button>
+            <button class="tab" data-tf="1h" type="button">1h</button>
+          </div>
+          <div class="tabs" role="tablist" title="24h OHLC interval">
+            <button class="tab active" data-ohlc="5m" type="button">OHLC 5m</button>
+            <button class="tab" data-ohlc="15m" type="button">OHLC 15m</button>
+            <button class="tab" data-ohlc="1m" type="button">OHLC 1m</button>
+          </div>
+        </div>
+        <div class="right">
+          <span class="muted">Line chart = rolling window; OHLC = 24h candles (server DB).</span>
+        </div>
+      </div>
+
+      <div class="chartWrap">
+        <canvas id="priceChart" height="120"></canvas>
+      </div>
+
+      <div class="muted" style="margin-top:10px;">
+        Tip: Switching timeframe requests new series from server over WebSocket.
+      </div>
+    </section>
+
+    <!-- Timezones -->
+    <section class="card" id="time" style="margin-top:14px;">
+      <h2>
+        <span>🕒 World Timezones</span>
+        <span class="pill2" id="localTz">Local</span>
+      </h2>
+      <div class="tzList" id="tzList"></div>
+      <div class="muted" style="margin-top:10px;">
+        Uses your device clock + IANA timezone formatting (updates every second).
+      </div>
+    </section>
+
     <footer>
-      © <span id="year"></span> W3TIGERDOG · Web3 Neon Dashboard<br/>
-      Built with pure HTML/CSS/JS on GitHub Pages.
+      © <span id="year"></span> W3TIGERDOG · WebSocket + SQLite + Chart.js<br/>
+      Deployed on Render.
     </footer>
   </div>
 
   <script>
     // ==============================
-    // CONFIG
+    // THEME
     // ==============================
-    const PROFILE = {
-      github: "https://github.com/W3TigerDog",
-      defaultCoins: [
-        { id: "bitcoin",  symbol: "BTC", name: "Bitcoin" },
-        { id: "ethereum", symbol: "ETH", name: "Ethereum" },
-        { id: "solana",   symbol: "SOL", name: "Solana" },
-        { id: "binancecoin", symbol: "BNB", name: "BNB" },
-        { id: "ripple",   symbol: "XRP", name: "XRP" },
-        { id: "cardano",  symbol: "ADA", name: "Cardano" },
-        { id: "dogecoin", symbol: "DOGE", name: "Dogecoin" },
-      ],
-      timezones: [
-        { label: "Vancouver", tz: "America/Vancouver" },
-        { label: "Edmonton",  tz: "America/Edmonton" },
-        { label: "New York",  tz: "America/New_York" },
-        { label: "London",    tz: "Europe/London" },
-        { label: "Paris",     tz: "Europe/Paris" },
-        { label: "Dubai",     tz: "Asia/Dubai" },
-        { label: "Beijing",   tz: "Asia/Shanghai" },
-        { label: "Tokyo",     tz: "Asia/Tokyo" },
-        { label: "Singapore", tz: "Asia/Singapore" },
-        { label: "Sydney",    tz: "Australia/Sydney" },
-      ],
-      refreshSeconds: 15,
-    };
-
-    const LS_COINS  = "w3tigerdog_watchlist_v3";
-    const LS_FIAT   = "w3tigerdog_fiat_v3";
-    const LS_THEME  = "w3tigerdog_theme_v3";
-
-    // Themes: Cyan / Purple / Green
+    const LS_THEME  = "w3tigerdog_theme_v4";
     const THEMES = {
       cyan:   { neon1:"#22d3ee", neon2:"#a78bfa", neon3:"#34d399" },
       purple: { neon1:"#a78bfa", neon2:"#22d3ee", neon3:"#34d399" },
       green:  { neon1:"#34d399", neon2:"#22d3ee", neon3:"#a78bfa" },
     };
 
+    let particleColor = "#22d3ee";
+    function applyTheme(name){
+      const t = THEMES[name] || THEMES.cyan;
+      document.documentElement.style.setProperty("--neon1", t.neon1);
+      document.documentElement.style.setProperty("--neon2", t.neon2);
+      document.documentElement.style.setProperty("--neon3", t.neon3);
+      localStorage.setItem(LS_THEME, name);
+      particleColor = t.neon1;
+    }
+    function loadTheme(){
+      const t = (localStorage.getItem(LS_THEME) || "cyan").toLowerCase();
+      return THEMES[t] ? t : "cyan";
+    }
+
     // ==============================
     // DOM
     // ==============================
     const elYear = document.getElementById("year");
-    const elBtnGithub = document.getElementById("btnGithub");
     const elNavGithub = document.getElementById("navGithub");
     const elBtnCopy = document.getElementById("btnCopy");
-
-    const elFiat = document.getElementById("fiat");
-    const elBtnRefresh = document.getElementById("btnRefresh");
-    const elBtnAdd = document.getElementById("btnAdd");
-    const elBtnReset = document.getElementById("btnReset");
-
     const elTheme = document.getElementById("themeSelect");
 
     const elPriceBody = document.getElementById("priceBody");
     const elPriceStatus = document.getElementById("priceStatus");
     const elDotPrice = document.getElementById("dotPrice");
 
-    const elTzList = document.getElementById("tzList");
-    const elLocalTz = document.getElementById("localTz");
-
     const elDotApi = document.getElementById("dotApi");
     const elDotUpd = document.getElementById("dotUpd");
     const elApiText = document.getElementById("apiText");
     const elUpdText = document.getElementById("updText");
+
+    const elDotChart = document.getElementById("dotChart");
+    const elChartStatus = document.getElementById("chartStatus");
+
+    const elChartCoin = document.getElementById("chartCoin");
+    const elGainersList = document.getElementById("gainersList");
+
+    const elTzList = document.getElementById("tzList");
+    const elLocalTz = document.getElementById("localTz");
+
+    const btnRefresh = document.getElementById("btnRefresh");
+    const btnAdd = document.getElementById("btnAdd");
+    const btnReset = document.getElementById("btnReset");
 
     // ==============================
     // Helpers
@@ -795,18 +603,25 @@
       })[m]);
     }
 
+    function setDot(el, mode){
+      el.classList.remove("live","warn","bad");
+      if(mode === "ok") el.classList.add("live");
+      else if(mode === "warn") el.classList.add("warn");
+      else if(mode === "bad") el.classList.add("bad");
+    }
+
     function nowHMSS(){
       return new Intl.DateTimeFormat("en-GB", {
         hour12:false, hour:"2-digit", minute:"2-digit", second:"2-digit"
       }).format(new Date());
     }
 
-    function money(n, currency){
+    function moneyUSD(n){
       if (n == null || !Number.isFinite(n)) return "—";
       const maxFrac = n >= 1000 ? 0 : (n >= 1 ? 2 : 6);
-      return new Intl.NumberFormat("en-CA", {
+      return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: currency.toUpperCase(),
+        currency: "USD",
         maximumFractionDigits: maxFrac
       }).format(n);
     }
@@ -818,71 +633,17 @@
       return { text: `${sign}${p.toFixed(2)}%`, cls };
     }
 
-    function setDot(el, mode){
-      el.classList.remove("live","warn","bad");
-      if(mode === "ok") el.classList.add("live");
-      else if(mode === "warn") el.classList.add("warn");
-      else if(mode === "bad") el.classList.add("bad");
-    }
-
     // ==============================
-    // State (watchlist + fiat + theme)
-    // ==============================
-    function loadCoins(){
-      try{
-        const raw = localStorage.getItem(LS_COINS);
-        if(!raw) return [...PROFILE.defaultCoins];
-        const parsed = JSON.parse(raw);
-        if(Array.isArray(parsed) && parsed.length) return parsed;
-        return [...PROFILE.defaultCoins];
-      }catch(_){
-        return [...PROFILE.defaultCoins];
-      }
-    }
-    function saveCoins(c){ localStorage.setItem(LS_COINS, JSON.stringify(c)); }
-
-    function loadFiat(){
-      const f = (localStorage.getItem(LS_FIAT) || "usd").toLowerCase();
-      return (f === "cad" || f === "usd") ? f : "usd";
-    }
-    function saveFiat(f){ localStorage.setItem(LS_FIAT, f); }
-
-    function loadTheme(){
-      const t = (localStorage.getItem(LS_THEME) || "cyan").toLowerCase();
-      return THEMES[t] ? t : "cyan";
-    }
-
-    // Particle color is used by canvas draw loop
-    let particleColor = "#22d3ee";
-
-    function applyTheme(name){
-      const t = THEMES[name] || THEMES.cyan;
-      document.documentElement.style.setProperty("--neon1", t.neon1);
-      document.documentElement.style.setProperty("--neon2", t.neon2);
-      document.documentElement.style.setProperty("--neon3", t.neon3);
-      localStorage.setItem(LS_THEME, name);
-      // update particle color immediately
-      particleColor = t.neon1;
-    }
-
-    let coins = loadCoins();
-    let fiat = loadFiat();
-
-    // ==============================
-    // Init UI
+    // Init
     // ==============================
     elYear.textContent = new Date().getFullYear();
-    elBtnGithub.href = PROFILE.github;
-    elNavGithub.href = PROFILE.github;
-    elFiat.value = fiat;
+    elNavGithub.href = "https://github.com/W3TigerDog";
 
-    // Theme init
     const themeName = loadTheme();
     elTheme.value = themeName;
     applyTheme(themeName);
     elTheme.addEventListener("change", () => applyTheme(elTheme.value));
 
-    // Copy site link
     elBtnCopy.addEventListener("click", async () => {
       const link = location.origin + "/";
       try{
@@ -898,46 +659,31 @@
     window.addEventListener("keydown", (e) => {
       if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
         e.preventDefault();
-        document.getElementById("q").focus();
+        document.getElementById("q")?.focus();
       }
     });
 
-    // Local timezone label
     try{
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       elLocalTz.textContent = tz || "Local";
     }catch(_){}
 
-    // Fiat change
-    elFiat.addEventListener("change", () => {
-      fiat = elFiat.value;
-      saveFiat(fiat);
-      fetchPrices(true);
-    });
-
-    // Buttons
-    elBtnRefresh.addEventListener("click", () => fetchPrices(true));
-
-    elBtnAdd.addEventListener("click", () => {
-      const id = prompt("CoinGecko coin id (example: 'pepe', 'uniswap', 'matic-network'):");
-      if(!id) return;
-      const symbol = prompt("Symbol (example: PEPE):") || id.toUpperCase().slice(0,6);
-      const name = prompt("Name (example: Pepe):") || id;
-      coins.push({ id: id.trim().toLowerCase(), symbol: symbol.trim(), name: name.trim() });
-      saveCoins(coins);
-      fetchPrices(true);
-    });
-
-    elBtnReset.addEventListener("click", () => {
-      if(!confirm("Reset watchlist to default?")) return;
-      coins = [...PROFILE.defaultCoins];
-      saveCoins(coins);
-      fetchPrices(true);
-    });
-
     // ==============================
-    // Timezones (tick every second)
+    // Timezones (Los Angeles + Chicago)
     // ==============================
+    const TIMEZONES = [
+      { label: "Los Angeles", tz: "America/Los_Angeles" }, // replaced Vancouver
+      { label: "Chicago", tz: "America/Chicago" },         // replaced Edmonton
+      { label: "New York", tz: "America/New_York" },
+      { label: "London", tz: "Europe/London" },
+      { label: "Paris", tz: "Europe/Paris" },
+      { label: "Dubai", tz: "Asia/Dubai" },
+      { label: "Beijing", tz: "Asia/Shanghai" },
+      { label: "Tokyo", tz: "Asia/Tokyo" },
+      { label: "Singapore", tz: "Asia/Singapore" },
+      { label: "Sydney", tz: "Australia/Sydney" }
+    ];
+
     function formatTz(tz){
       const fmt = new Intl.DateTimeFormat("en-GB", {
         timeZone: tz,
@@ -947,8 +693,9 @@
       });
       return fmt.format(new Date());
     }
+
     function renderTimezones(){
-      elTzList.innerHTML = PROFILE.timezones.map(z => `
+      elTzList.innerHTML = TIMEZONES.map(z => `
         <div class="tzItem">
           <div>
             <b>${escapeHtml(z.label)}</b>
@@ -962,122 +709,286 @@
     setInterval(renderTimezones, 1000);
 
     // ==============================
-    // Prices (CoinGecko simple/price)
+    // WebSocket client
     // ==============================
-    let lastOkTs = 0;
-    let inflight = false;
+    const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+    let ws = null;
 
-    async function fetchPrices(force = false){
-      const now = Date.now();
-      if(!force && inflight) return;
-      if(!force && now - lastOkTs < 5500) return;
+    let COINS = [];
+    let latest = null;
 
-      inflight = true;
-      elPriceStatus.textContent = "updating…";
+    // chart state
+    let chart = null;
+    let currentTF = "1m";
+    let currentCoin = "bitcoin";
+    let currentOHLC = "5m"; // for 24h candles view mode
+
+    // if true, chart is showing OHLC candles (we render as close line for simplicity)
+    // (You can upgrade later to a true candlestick plugin.)
+    let showOHLC = false;
+
+    function connectWS(){
       setDot(elDotPrice, "warn");
+      elPriceStatus.textContent = "connecting…";
 
-      const ids = coins.map(c => c.id).join(",");
-      const url = new URL("https://api.coingecko.com/api/v3/simple/price");
-      url.searchParams.set("ids", ids);
-      url.searchParams.set("vs_currencies", fiat);
-      url.searchParams.set("include_24hr_change", "true");
+      ws = new WebSocket(WS_URL);
 
-      try{
-        const res = await fetch(url.toString(), { headers: { "accept": "application/json" } });
-        if(!res.ok) throw new Error("HTTP " + res.status);
-
-        const data = await res.json();
-        const updated = nowHMSS();
-        lastOkTs = Date.now();
-
-        elPriceBody.innerHTML = coins.map(c => {
-          const row = data?.[c.id];
-          const price = row?.[fiat];
-          const chg24 = row?.[`${fiat}_24h_change`];
-          const pct = fmtPct(chg24);
-
-          return `
-            <tr>
-              <td>
-                <div class="rowName">
-                  <span class="sym">${escapeHtml(c.symbol)}</span>
-                  <span class="muted">${escapeHtml(c.name)}</span>
-                  <span class="muted">(${escapeHtml(c.id)})</span>
-                </div>
-              </td>
-              <td class="priceCell">${escapeHtml(money(price, fiat))}</td>
-              <td><span class="${pct.cls}">${escapeHtml(pct.text)}</span></td>
-              <td class="muted">${escapeHtml(updated)}</td>
-            </tr>
-          `;
-        }).join("");
-
-        elPriceStatus.textContent = `updated ${updated}`;
-        setDot(elDotPrice, "ok");
-
+      ws.onopen = () => {
         setDot(elDotApi, "ok");
-        elApiText.textContent = "OK";
-        setDot(elDotUpd, "ok");
-        elUpdText.textContent = updated;
-
-      }catch(err){
-        elPriceStatus.textContent = "update failed (rate-limit / network)";
-        setDot(elDotPrice, "bad");
-
-        setDot(elDotApi, "bad");
-        elApiText.textContent = "FAIL";
-        setDot(elDotUpd, "warn");
-        elUpdText.textContent = (lastOkTs ? new Date(lastOkTs).toLocaleTimeString() : "—");
-
-        console.warn(err);
-      }finally{
-        inflight = false;
-      }
-    }
-
-    // ✅ Robust dynamic scheduler (better than setInterval)
-    let priceTimer = null;
-
-    function startPriceLoop(){
-      stopPriceLoop();
-      const period = Math.max(10, PROFILE.refreshSeconds) * 1000;
-
-      const loop = async () => {
-        await fetchPrices(false);
-        priceTimer = setTimeout(loop, period);
+        elApiText.textContent = "WS OK";
+        setDot(elDotPrice, "ok");
+        elPriceStatus.textContent = "connected";
+        // ask for default series
+        requestSeries(currentCoin, currentTF);
+        requestOHLC(currentCoin, currentOHLC);
       };
 
-      priceTimer = setTimeout(loop, period);
+      ws.onclose = () => {
+        setDot(elDotApi, "bad");
+        elApiText.textContent = "WS DOWN";
+        setDot(elDotPrice, "bad");
+        elPriceStatus.textContent = "disconnected (retrying)";
+        // retry
+        setTimeout(connectWS, 1200);
+      };
+
+      ws.onerror = () => {
+        // let onclose handle UI
+      };
+
+      ws.onmessage = (ev) => {
+        let msg;
+        try{ msg = JSON.parse(ev.data); }catch{ return; }
+
+        if(msg.type === "snapshot"){
+          COINS = msg.payload.coins || [];
+          latest = msg.payload.latest || null;
+          fillCoinSelect();
+          if(latest) renderPrices(latest);
+        }
+
+        if(msg.type === "tick"){
+          latest = msg.payload;
+          renderPrices(latest);
+        }
+
+        if(msg.type === "gainers"){
+          renderGainers(msg.payload?.gainers || []);
+        }
+
+        if(msg.type === "series_init"){
+          // initial preload (optional)
+          // we still request on demand
+        }
+
+        if(msg.type === "series"){
+          const { coin, tf, series } = msg.payload;
+          if(coin === currentCoin && tf === currentTF && !showOHLC){
+            renderChartLine(series, coin, tf);
+          }
+        }
+
+        if(msg.type === "ohlc"){
+          const { coin, interval, candles } = msg.payload;
+          if(coin === currentCoin && interval === currentOHLC && showOHLC){
+            // render candle close line (simple)
+            const series = candles.map(c => ({ t: c.t, v: c.c }));
+            renderChartLine(series, coin, "24h OHLC " + interval);
+          }
+        }
+      };
     }
 
-    function stopPriceLoop(){
-      if(priceTimer) clearTimeout(priceTimer);
-      priceTimer = null;
+    function wsSend(obj){
+      if(!ws || ws.readyState !== 1) return;
+      ws.send(JSON.stringify(obj));
     }
 
-    // Start now
-    fetchPrices(true);
-    startPriceLoop();
+    function requestSeries(coin, tf){
+      showOHLC = false;
+      setDot(elDotChart, "warn");
+      elChartStatus.textContent = "loading series…";
+      wsSend({ type: "get_series", coin, tf });
+    }
 
-    // When user returns to tab, refresh immediately
-    document.addEventListener("visibilitychange", () => {
-      if(!document.hidden){
-        fetchPrices(true);
-        startPriceLoop();
-      }
-    });
-
-    // When window regains focus, refresh immediately
-    window.addEventListener("focus", () => {
-      fetchPrices(true);
-      startPriceLoop();
-    });
+    function requestOHLC(coin, interval){
+      showOHLC = true;
+      setDot(elDotChart, "warn");
+      elChartStatus.textContent = "loading OHLC…";
+      wsSend({ type: "get_ohlc", coin, interval });
+    }
 
     // ==============================
-    // Floating Particles (canvas)
+    // Prices render
+    // ==============================
+    function renderPrices(payload){
+      const ts = payload?.ts ? new Date(payload.ts) : new Date();
+      setDot(elDotUpd, payload?.ok ? "ok" : "warn");
+      elUpdText.textContent = ts.toLocaleTimeString();
+
+      if(payload?.ok){
+        setDot(elDotPrice, "ok");
+        elPriceStatus.textContent = "live";
+      }else{
+        setDot(elDotPrice, "warn");
+        elPriceStatus.textContent = payload?.error ? ("error: " + payload.error) : "waiting…";
+      }
+
+      const prices = payload?.prices || {};
+      const rows = COINS.map(c => {
+        const p = prices?.[c.id];
+        const price = p?.price;
+        const pct = fmtPct(p?.chg24);
+
+        return `
+          <tr>
+            <td>
+              <div class="rowName">
+                <span class="sym">${escapeHtml(c.symbol)}</span>
+                <span class="muted">${escapeHtml(c.name)}</span>
+                <span class="muted">(${escapeHtml(c.id)})</span>
+              </div>
+            </td>
+            <td class="priceCell">${escapeHtml(moneyUSD(price))}</td>
+            <td><span class="${pct.cls}">${escapeHtml(pct.text)}</span></td>
+            <td class="muted">${escapeHtml(ts.toLocaleTimeString())}</td>
+          </tr>
+        `;
+      }).join("");
+
+      elPriceBody.innerHTML = rows;
+    }
+
+    // ==============================
+    // Top gainers render
+    // ==============================
+    function renderGainers(list){
+      if(!Array.isArray(list) || list.length === 0){
+        elGainersList.innerHTML = `<div class="muted">Waiting for data…</div>`;
+        return;
+      }
+      elGainersList.innerHTML = list.map(g => {
+        const pct = Number(g.pct);
+        const cls = pct >= 0 ? "up" : "down";
+        const label = (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
+        return `
+          <div class="gainer">
+            <div>
+              <b>${escapeHtml(g.symbol)}</b>
+              <div class="muted">${escapeHtml(g.name)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="${cls} chg">${escapeHtml(label)}</div>
+              <div class="muted">${escapeHtml(moneyUSD(g.last))}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // ==============================
+    // Chart.js
+    // ==============================
+    function fillCoinSelect(){
+      if(!COINS.length) return;
+      elChartCoin.innerHTML = COINS.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.symbol)} · ${escapeHtml(c.name)}</option>`).join("");
+      elChartCoin.value = currentCoin;
+    }
+
+    function ensureChart(){
+      if(chart) return chart;
+
+      const ctx = document.getElementById("priceChart").getContext("2d");
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [{
+            label: "Price",
+            data: [],
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.25
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true }
+          },
+          scales: {
+            x: {
+              ticks: { maxTicksLimit: 10 }
+            },
+            y: {
+              ticks: { maxTicksLimit: 6 }
+            }
+          }
+        }
+      });
+      return chart;
+    }
+
+    function renderChartLine(series, coin, label){
+      const c = ensureChart();
+      const labels = series.map(p => new Date(p.t).toLocaleTimeString());
+      const data = series.map(p => p.v);
+
+      c.data.labels = labels;
+      c.data.datasets[0].data = data;
+
+      const coinMeta = COINS.find(x => x.id === coin);
+      const coinLabel = coinMeta ? `${coinMeta.symbol} · ${coinMeta.name}` : coin;
+      c.data.datasets[0].label = `${coinLabel} · ${label}`;
+
+      c.update("none");
+
+      setDot(elDotChart, "ok");
+      elChartStatus.textContent = "updated " + nowHMSS();
+    }
+
+    // UI controls for chart
+    document.querySelectorAll(".tab[data-tf]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab[data-tf]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentTF = btn.getAttribute("data-tf");
+        requestSeries(currentCoin, currentTF);
+      });
+    });
+
+    document.querySelectorAll(".tab[data-ohlc]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab[data-ohlc]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentOHLC = btn.getAttribute("data-ohlc");
+        requestOHLC(currentCoin, currentOHLC);
+      });
+    });
+
+    elChartCoin.addEventListener("change", () => {
+      currentCoin = elChartCoin.value;
+      // keep whichever mode user is on
+      if(showOHLC) requestOHLC(currentCoin, currentOHLC);
+      else requestSeries(currentCoin, currentTF);
+    });
+
+    btnRefresh.addEventListener("click", () => {
+      if(showOHLC) requestOHLC(currentCoin, currentOHLC);
+      else requestSeries(currentCoin, currentTF);
+    });
+
+    // (UI-only placeholders; server watchlist is fixed for now)
+    btnAdd.addEventListener("click", () => alert("Server watchlist is fixed in server.js for now. Add coins there to persist."));
+    btnReset.addEventListener("click", () => alert("Server watchlist is fixed in server.js for now."));
+
+    // ==============================
+    // Particles (same as your version)
     // ==============================
     const canvas = document.getElementById("particles");
-    const ctx = canvas.getContext("2d", { alpha: true });
+    const pctx = canvas.getContext("2d", { alpha: true });
 
     let w = 0, h = 0, dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     let particles = [];
@@ -1091,7 +1002,7 @@
       canvas.height = Math.floor(h * dpr);
       canvas.style.width = w + "px";
       canvas.style.height = h + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const target = Math.max(22, Math.min(70, Math.floor((w * h) / 45000)));
       if (particles.length < target){
@@ -1131,15 +1042,15 @@
     }
 
     function draw(){
-      ctx.clearRect(0,0,w,h);
+      pctx.clearRect(0,0,w,h);
 
       const rgb = hexToRgb(particleColor);
 
-      const vg = ctx.createRadialGradient(w*0.5, h*0.4, Math.min(w,h)*0.1, w*0.5, h*0.4, Math.max(w,h)*0.75);
+      const vg = pctx.createRadialGradient(w*0.5, h*0.4, Math.min(w,h)*0.1, w*0.5, h*0.4, Math.max(w,h)*0.75);
       vg.addColorStop(0, "rgba(0,0,0,0)");
       vg.addColorStop(1, "rgba(0,0,0,0.20)");
-      ctx.fillStyle = vg;
-      ctx.fillRect(0,0,w,h);
+      pctx.fillStyle = vg;
+      pctx.fillRect(0,0,w,h);
 
       for(const p of particles){
         p.x += p.vx;
@@ -1156,13 +1067,13 @@
         const tw = (Math.sin(p.phase) + 1) * 0.5;
         const a = p.alpha * (0.55 + tw*0.75);
 
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r*10);
+        const g = pctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r*10);
         g.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`);
         g.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r*10, 0, Math.PI*2);
-        ctx.fill();
+        pctx.fillStyle = g;
+        pctx.beginPath();
+        pctx.arc(p.x, p.y, p.r*10, 0, Math.PI*2);
+        pctx.fill();
       }
 
       raf = requestAnimationFrame(draw);
@@ -1185,6 +1096,11 @@
       resize();
       startParticles();
     }
+
+    // ==============================
+    // Connect WebSocket
+    // ==============================
+    connectWS();
   </script>
 </body>
 </html>
