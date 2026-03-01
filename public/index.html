@@ -106,16 +106,6 @@
           <span class="hint"><span class="dot" id="dotPrice"></span><span id="priceStatus">connecting…</span></span>
         </h2>
 
-        <div class="controls">
-          <div class="left">
-            <button class="textbtn primary" id="btnRefresh" type="button">Request Chart Refresh</button>
-            <button class="textbtn" id="btnAdd" type="button">Add Coin (UI only)</button>
-            <button class="textbtn danger" id="btnReset" type="button">Reset Watchlist (UI)</button>
-          </div>
-          <div class="right">
-            <span class="muted">Live feed via WebSocket. Stored in SQLite on server.</span>
-          </div>
-        </div>
 
         <table>
           <thead>
@@ -269,9 +259,6 @@
     const elTzList = document.getElementById("tzList");
     const elLocalTz = document.getElementById("localTz");
 
-    const btnRefresh = document.getElementById("btnRefresh");
-    const btnAdd = document.getElementById("btnAdd");
-    const btnReset = document.getElementById("btnReset");
 
     // Helpers
     function escapeHtml(str){
@@ -593,13 +580,6 @@
       else requestSeries(currentCoin, currentTF);
     });
 
-    btnRefresh.addEventListener("click", () => {
-      if(showOHLC) requestOHLC(currentCoin, currentOHLC);
-      else requestSeries(currentCoin, currentTF);
-    });
-
-    btnAdd.addEventListener("click", () => alert("Server watchlist is fixed in server.js for now. Add coins there to persist."));
-    btnReset.addEventListener("click", () => alert("Server watchlist is fixed in server.js for now."));
 
     // Particles (same)
     const canvas = document.getElementById("particles");
