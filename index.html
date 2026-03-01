@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>W3TIGERDOG · Web3 Home</title>
+  <meta name="description" content="W3TIGERDOG Web3 风格主页：实时币价、Google 搜索、全球时区时钟" />
+
+  <style>
+    :root{
+      --bg:#070A12;
+      --panel: rgba(255,255,255,.03);
+      --panel2: rgba(255,255,255,.05);
+      --line: rgba(255,255,255,.10);
+      --text:#EAF0FF;
+      --muted:#9FB0D0;
+
+      --neon1:#22d3ee; /* cyan */
+      --neon2:#a78bfa; /* purple */
+      --neon3:#34d399; /* green */
+      --warn:#fbbf24;
+
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+      --r18: 18px;
+      --r22: 22px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans SC", "PingFang SC", "Microsoft Yahei", sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 500px at 15% -10%, rgba(34,211,238,.18), transparent 60%),
+        radial-gradient(900px 600px at 110% 10%, rgba(167,139,250,.20), transparent 55%),
+        radial-gradient(800px 500px at 60% 110%, rgba(52,211,153,.12), transparent 55%),
+        var(--bg);
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ max-width:1100px; margin:0 auto; padding:22px 16px 70px; }
+
+    /* Top bar */
+    .top{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:10px 0 16px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:900; letter-spacing:.4px;
+    }
+    .orb{
+      width:12px; height:12px; border-radius:999px;
+      background: linear-gradient(135deg, var(--neon1), var(--neon2));
+      box-shadow:
+        0 0 0 7px rgba(34,211,238,.10),
+        0 0 18px rgba(167,139,250,.25);
+    }
+    .nav{ display:flex; gap:10px; flex-wrap:wrap; }
+    .nav a{
+      font-size:13px; color:var(--muted);
+      padding:8px 10px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background: rgba(255,255,255,.02);
+      backdrop-filter: blur(6px);
+    }
+
+    /* Hero */
+    .hero{
+      border:1px solid var(--line);
+      border-radius:var(--r22);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .heroInner{
+      padding:18px;
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:14px;
+      align-items:stretch;
+    }
+    .titleRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+    h1{ margin:0; font-size:30px; letter-spacing:.2px;}
+    .tag{
+      font-size:12px; color:var(--muted);
+      padding:7px 10px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      border-radius:999px;
+    }
+    .sub{ margin-top:8px; color:var(--muted); line-height:1.65; font-size:13px; }
+    .badges{ margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+    .badge{
+      font-size:12px; color:var(--muted);
+      padding:7px 10px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      background: rgba(34,211,238,.06);
+    }
+    .cta{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      font-weight:800;
+      font-size:13px;
+    }
+    .btn.primary{
+      border-color: rgba(34,211,238,.25);
+      background: linear-gradient(135deg, rgba(34,211,238,.18), rgba(167,139,250,.16));
+      box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset;
+    }
+
+    /* Search */
+    .searchCard{
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:var(--r18);
+      background: rgba(255,255,255,.03);
+      padding:14px;
+      position:relative;
+      overflow:hidden;
+    }
+    .searchCard:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(400px 220px at 20% 0%, rgba(34,211,238,.18), transparent 60%),
+                  radial-gradient(400px 220px at 90% 60%, rgba(167,139,250,.18), transparent 60%);
+      opacity:.8;
+      pointer-events:none;
+    }
+    .searchCard > *{ position:relative; }
+    .searchTitle{ font-weight:900; letter-spacing:.2px; margin-bottom:8px; }
+    form{ margin:0; }
+    .searchRow{ display:flex; gap:10px; }
+    input[type="text"]{
+      flex:1;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      color:var(--text);
+      outline:none;
+    }
+    input[type="text"]::placeholder{ color: rgba(159,176,208,.75); }
+    .go{
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(34,211,238,.25);
+      background: rgba(34,211,238,.10);
+      color:var(--text);
+      font-weight:900;
+      cursor:pointer;
+    }
+    .mini{ margin-top:8px; font-size:12px; color:var(--muted); }
+
+    /* Main grid */
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap:14px;
+    }
+    .card{
+      border:1px solid var(--line);
+      border-radius:var(--r22);
+      background: rgba(255,255,255,.03);
+      padding:16px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
+    }
+    .card h2{
+      margin:0 0 12px;
+      font-size:14px;
+      letter-spacing:.35px;
+      color: rgba(234,240,255,.95);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .hint{ font-size:12px; color:var(--muted); font-weight:700; }
+
+    /* Prices table */
+    table{ width:100%; border-collapse:collapse; }
+    th, td{
+      padding:10px 8px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      text-align:left;
+      font-size:13px;
+    }
+    th{ color: rgba(234,240,255,.78); font-size:12px; letter-spacing:.3px; font-weight:900;}
+    td{ color: rgba(234,240,255,.92); }
+    .sym{ font-weight:900; letter-spacing:.2px; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .chg{
+      font-weight:900;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:12px;
+    }
+    .up{ color: var(--neon3); border-color: rgba(52,211,153,.22); background: rgba(52,211,153,.08); }
+    .down{ color: #fb7185; border-color: rgba(251,113,133,.25); background: rgba(251,113,133,.08); }
+
+    /* Timezones */
+    .tzList{
+      display:grid;
+      gap:10px;
+    }
+    .tzItem{
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      border-radius:16px;
+    }
+    .tzItem b{ font-size:13px; }
+    .tzItem span{ font-variant-numeric: tabular-nums; font-weight:900; }
+    .pill{
+      font-size:11px;
+      color:var(--muted);
+      padding:6px 9px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      background: rgba(255,255,255,.02);
+    }
+
+    /* Footer */
+    footer{
+      margin-top:16px;
+      text-align:center;
+      color: rgba(255,255,255,.35);
+      font-size:12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 920px){
+      .heroInner{ grid-template-columns: 1fr; }
+      .grid{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="orb"></div>
+        <div>W3TIGERDOG</div>
+      </div>
+      <div class="nav">
+        <a href="#prices">Prices</a>
+        <a href="#search">Search</a>
+        <a href="#time">Time</a>
+        <a id="navGithub" href="#" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="heroInner">
+        <div>
+          <div class="titleRow">
+            <h1>W3TIGERDOG · Web3 Dashboard</h1>
+            <span class="tag">⚡ Live · Neon · Minimal</span>
+          </div>
+          <div class="sub">
+            一个“主页级”Web3 面板：实时币价 + Google 搜索 + 全球主要时区。
+            适合直接挂 GitHub Pages，当作你的入口页 / 作品集首页。
+          </div>
+          <div class="badges">
+            <span class="badge">JS · Fetch · UI</span>
+            <span class="badge">Web3 Data / Monitoring</span>
+            <span class="badge">No Framework</span>
+          </div>
+          <div class="cta">
+            <a class="btn primary" id="btnGithub" href="#" target="_blank" rel="noreferrer">🐙 GitHub</a>
+            <a class="btn" href="#prices">📈 Prices</a>
+            <a class="btn" href="#time">🌍 Timezones</a>
+          </div>
+        </div>
+
+        <div class="searchCard" id="search">
+          <div class="searchTitle">🔎 Google Search</div>
+          <form action="https://www.google.com/search" method="GET" target="_blank" rel="noreferrer">
+            <div class="searchRow">
+              <input id="q" name="q" type="text" placeholder="搜索：Solana RPC / meme token / react..." autocomplete="off" />
+              <button class="go" type="submit">Search</button>
+            </div>
+          </form>
+          <div class="mini">Tip：按 <b>/</b> 可快速聚焦搜索框</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card" id="prices">
+        <h2>
+          <span>💎 Major Crypto Prices (Live)</span>
+          <span class="hint" id="priceStatus">updating...</span>
+        </h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Price (USD)</th>
+              <th>24h</th>
+              <th class="muted">Updated</th>
+            </tr>
+          </thead>
+          <tbody id="priceBody"></tbody>
+        </table>
+
+        <div class="muted" style="margin-top:10px;">
+          数据来源：CoinGecko <code>/simple/price</code>（示例：ids=bitcoin,ethereum…）。:contentReference[oaicite:1]{index=1}
+        </div>
+      </section>
+
+      <aside class="card" id="time">
+        <h2>
+          <span>🕒 World Timezones</span>
+          <span class="pill" id="localTz">Local</span>
+        </h2>
+
+        <div class="tzList" id="tzList"></div>
+
+        <div class="muted" style="margin-top:10px;">
+          时间使用浏览器本地时钟 + IANA 时区格式化（实时走秒）。
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      © <span id="year"></span> W3TIGERDOG · Web3 Neon Home
+    </footer>
+  </div>
+
+  <script>
+    // ====== 1) 你只需要改这里（30秒） ======
+    const PROFILE = {
+      github: "https://github.com/W3TigerDog",
+      // 想显示更多币？在 coins 里加 coinGeckoId + symbol + name
+      coins: [
+        { id: "bitcoin",  symbol: "BTC", name: "Bitcoin" },
+        { id: "ethereum", symbol: "ETH", name: "Ethereum" },
+        { id: "solana",   symbol: "SOL", name: "Solana" },
+        { id: "binancecoin", symbol: "BNB", name: "BNB" },
+        { id: "ripple",   symbol: "XRP", name: "XRP" },
+        { id: "cardano",  symbol: "ADA", name: "Cardano" },
+        { id: "dogecoin", symbol: "DOGE", name: "Dogecoin" },
+      ],
+      // 主要时区（你可按喜好增删）
+      timezones: [
+        { label: "Vancouver", tz: "America/Vancouver" },
+        { label: "New York",  tz: "America/New_York" },
+        { label: "London",    tz: "Europe/London" },
+        { label: "Paris",     tz: "Europe/Paris" },
+        { label: "Dubai",     tz: "Asia/Dubai" },
+        { label: "Beijing",   tz: "Asia/Shanghai" },
+        { label: "Tokyo",     tz: "Asia/Tokyo" },
+        { label: "Singapore", tz: "Asia/Singapore" },
+        { label: "Sydney",    tz: "Australia/Sydney" },
+      ],
+      refreshSeconds: 15
+    };
+
+    // ====== 2) UI init ======
+    document.getElementById("year").textContent = new Date().getFullYear();
+    document.getElementById("btnGithub").href = PROFILE.github;
+    document.getElementById("navGithub").href = PROFILE.github;
+
+    // Quick focus: press "/" to focus search
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+        e.preventDefault();
+        document.getElementById("q").focus();
+      }
+    });
+
+    // Local timezone pill
+    try{
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      document.getElementById("localTz").textContent = tz || "Local";
+    }catch(_){}
+
+    // ====== 3) Timezones render (tick every second) ======
+    const tzListEl = document.getElementById("tzList");
+
+    function formatTzTime(tz){
+      // 24小时制 + 秒
+      const fmt = new Intl.DateTimeFormat("en-GB", {
+        timeZone: tz,
+        hour12: false,
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
+      });
+      return fmt.format(new Date());
+    }
+
+    function renderTimezones(){
+      tzListEl.innerHTML = PROFILE.timezones.map(z => `
+        <div class="tzItem">
+          <div>
+            <b>${escapeHtml(z.label)}</b>
+            <div class="muted">${escapeHtml(z.tz)}</div>
+          </div>
+          <span>${escapeHtml(formatTzTime(z.tz))}</span>
+        </div>
+      `).join("");
+    }
+
+    renderTimezones();
+    setInterval(renderTimezones, 1000);
+
+    // ====== 4) Crypto prices (CoinGecko /simple/price) ======
+    // Public endpoint commonly used: https://api.coingecko.com/api/v3/simple/price
+    // Params: ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true
+    // Docs: /simple/price.  :contentReference[oaicite:2]{index=2}
+    const priceBody = document.getElementById("priceBody");
+    const priceStatus = document.getElementById("priceStatus");
+
+    function money(n){
+      if (n == null || !Number.isFinite(n)) return "—";
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: n >= 1000 ? 0 : (n >= 1 ? 2 : 6)
+      }).format(n);
+    }
+
+    function fmtPct(p){
+      if (p == null || !Number.isFinite(p)) return { text:"—", cls:"chg" };
+      const sign = p >= 0 ? "+" : "";
+      const cls = p >= 0 ? "chg up" : "chg down";
+      return { text: `${sign}${p.toFixed(2)}%`, cls };
+    }
+
+    function nowHMSS(){
+      return new Intl.DateTimeFormat("en-GB", {
+        hour12:false, hour:"2-digit", minute:"2-digit", second:"2-digit"
+      }).format(new Date());
+    }
+
+    async function fetchPrices(){
+      const ids = PROFILE.coins.map(c => c.id).join(",");
+      const url = new URL("https://api.coingecko.com/api/v3/simple/price");
+      url.searchParams.set("ids", ids);
+      url.searchParams.set("vs_currencies", "usd");
+      url.searchParams.set("include_24hr_change", "true");
+
+      priceStatus.textContent = "updating...";
+      try{
+        const res = await fetch(url.toString(), {
+          headers: { "accept": "application/json" }
+        });
+        if(!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        const updated = nowHMSS();
+        priceBody.innerHTML = PROFILE.coins.map(c => {
+          const row = data?.[c.id];
+          const price = row?.usd;
+          const chg24 = row?.usd_24h_change;
+          const pct = fmtPct(chg24);
+
+          return `
+            <tr>
+              <td><span class="sym">${escapeHtml(c.symbol)}</span> <span class="muted">${escapeHtml(c.name)}</span></td>
+              <td>${escapeHtml(money(price))}</td>
+              <td><span class="${pct.cls}">${escapeHtml(pct.text)}</span></td>
+              <td class="muted">${escapeHtml(updated)}</td>
+            </tr>
+          `;
+        }).join("");
+
+        priceStatus.textContent = `updated ${updated}`;
+      }catch(err){
+        priceStatus.textContent = "update failed (rate-limit / network)";
+        // 不清空旧数据，保留上一次成功的
+        console.warn(err);
+      }
+    }
+
+    fetchPrices();
+    setInterval(fetchPrices, Math.max(10, PROFILE.refreshSeconds) * 1000);
+
+    // ====== utils ======
+    function escapeHtml(str){
+      return String(str ?? "").replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      })[m]);
+    }
+  </script>
+</body>
+</html>
