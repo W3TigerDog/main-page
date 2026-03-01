@@ -50,7 +50,10 @@
         <div>
           <div class="titleRow">
             <h1>W3TIGERDOG · Web3 Neon Dashboard</h1>
-            <span class="tag"><span class="spark"></span> Live · WebSocket · DB</span>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <span class="tag"><span class="spark"></span> Live · WebSocket · DB</span>
+              <span class="tag" id="localNow" title="Your local date/time">Local: ---- --:--:--</span>
+            </div>
           </div>
 
           <div class="sub">
@@ -198,6 +201,28 @@
   </div>
 
   <script>
+
+    // ---- Visitor local date/time (YYYY-MM-DD + live clock) ----
+    const elLocalNow = document.getElementById("localNow");
+
+    function pad2(n){ return String(n).padStart(2, "0"); }
+
+    function renderLocalNow(){
+      if(!elLocalNow) return;
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = pad2(d.getMonth() + 1);
+      const dd = pad2(d.getDate());
+
+      const hh = pad2(d.getHours());
+      const mi = pad2(d.getMinutes());
+      const ss = pad2(d.getSeconds());
+
+      elLocalNow.textContent = `Local: ${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+    }
+
+    renderLocalNow();
+    setInterval(renderLocalNow, 1000);
     // THEME
     const LS_THEME  = "w3tigerdog_theme_v4";
     const THEMES = {
