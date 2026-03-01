@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>W3TIGERDOG · Web3 Neon Dashboard</title>
+  <title>W3TigerDog · Web3 Neon Dashboard</title>
   <meta name="description" content="Web3 neon dashboard with WebSocket live feed, price history charts, 24h OHLC, and top gainers." />
 
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -391,7 +391,14 @@
         <div>
           <div class="titleRow">
             <h1>W3TIGERDOG · Web3 Neon Dashboard</h1>
-            <span class="tag"><span class="spark"></span> Live · WebSocket · DB</span>
+            <div class="titleRow">
+  <h1>W3TIGERDOG · Web3 Neon Dashboard</h1>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <span class="tag"><span class="spark"></span> Live · WebSocket · DB</span>
+              <span class="tag" id="localNow" title="Your local time">Local: --/--/---- --:--:--</span>
+            </div>
+          </div>
           </div>
 
           <div class="sub">
@@ -597,6 +604,29 @@
     // ==============================
     // Helpers
     // ==============================
+
+    // ---- Local date & time (visitor) ----
+    const elLocalNow = document.getElementById("localNow");
+
+    function renderLocalNow(){
+      if(!elLocalNow) return;
+      const d = new Date();
+      const text = new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }).format(d);
+
+      elLocalNow.textContent = `Local: ${text}`;
+    }
+
+    renderLocalNow();
+    setInterval(renderLocalNow, 1000);
+
+
     function escapeHtml(str){
       return String(str ?? "").replace(/[&<>"']/g, (m) => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
