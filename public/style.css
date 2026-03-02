@@ -532,9 +532,9 @@ footer{
 .bubble{
   padding: 6px 10px;
   border-radius: 10px;
-  background: rgba(2,6,23,.72);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  background: rgba(2,6,23,.78);
+  border: 1px solid rgba(34,211,238,.25);
+  box-shadow: 0 0 18px rgba(34,211,238,.25);
   backdrop-filter: blur(6px);
   max-width: 220px;
   line-height: 1.2;
