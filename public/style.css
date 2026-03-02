@@ -530,8 +530,8 @@ footer{
 }
 
 .bubble{
-  padding: 8px 10px;
-  border-radius: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
   background: rgba(2,6,23,.72);
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: 0 10px 30px rgba(0,0,0,.35);
@@ -539,6 +539,21 @@ footer{
   max-width: 220px;
   line-height: 1.2;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 .bubble b{ display:block; font-size: 12px; }
 .bubble small{ display:block; opacity:.8; font-size: 11px; margin-top: 2px; }
