@@ -442,20 +442,18 @@
  function ensureMarkers(){
   if(!elMarkers) return;
 
-  const OFFSETS = {
-  "Los Angeles": { x: -95, y: -10 },
+const OFFSETS = {
+  "Los Angeles": { x: -25, y: -20 },
+  "Chicago":     { x: -10, y: -35 },
+  "New York":    { x:  15, y: -25 },
+  "London":      { x:  10, y: -30 },
+  "Paris":       { x: -15, y: -25 },
 
-  "Chicago":     { x: -10, y: -95 },
-  "New York":    { x:  70, y: -40 },
-  "Paris":       { x: -55, y: -55 },
-  "London":      { x:  10, y: -115 },
-
-  "Dubai":       { x:  60, y: -30 },
-  "Singapore":   { x:  30, y:  30 },
-  "Beijing":     { x:  35, y: -75 },
-  "Tokyo":       { x:  55, y: -10 },
-
-  "Sydney":      { x: -95, y:  10 }
+  "Dubai":       { x:  12, y: -22 },
+  "Singapore":   { x:  12, y:  18 },
+  "Beijing":     { x:  12, y: -28 },
+  "Tokyo":       { x:  12, y: -18 },
+  "Sydney":      { x: -18, y:  18 }
 };
 
   elMarkers.innerHTML = MAP_TZS.map((z, i) => {
