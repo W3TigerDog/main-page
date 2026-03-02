@@ -94,6 +94,32 @@
             </div>
           </form>
 
+          <hr style="opacity:.2; margin:14px 0; border:none; border-top:1px solid rgba(255,255,255,.12);" />
+
+          <div class="searchTitle" style="margin-bottom:8px;">
+            <span>🤖 Chat</span>
+            <small>Quick prompts</small>
+          </div>
+
+          <div class="searchRow" style="margin-bottom:10px;">
+            <input id="chatgptPrompt" type="text" placeholder="Ask ChatGPT..." autocomplete="off" />
+            <button class="go" id="btnChatGPT" type="button">ChatGPT</button>
+          </div>
+
+          <div class="searchRow">
+            <input id="geminiPrompt" type="text" placeholder="Ask Gemini..." autocomplete="off" />
+            <button class="go" id="btnGemini" type="button">Gemini</button>
+          </div>
+
+          <div class="mini" style="margin-top:10px;">
+            Tip: Enter 发送，自动在新标签页打开对应聊天页面。
+          </div>
+
+
+
+
+
+
           <div class="mini">Tip: use <kbd>/</kbd> to focus the search box quickly.</div>
         </div>
       </div>
@@ -314,10 +340,61 @@
     });
 
     // quick focus search
+
+
+
+
+
+
+
+    // ---- ChatGPT / Gemini quick chat launch ----
+    const elChatGPTPrompt = document.getElementById("chatgptPrompt");
+    const elGeminiPrompt  = document.getElementById("geminiPrompt");
+    const elBtnChatGPT    = document.getElementById("btnChatGPT");
+    const elBtnGemini     = document.getElementById("btnGemini");
+
+    // 只做“把问题带过去并打开新标签页”
+    // 注意：这些站点通常不允许被 iframe 嵌入，只能用 window.open
+    function openChatGPT(q){
+      const text = (q || "").trim();
+      // ChatGPT 目前最稳定是直接打开聊天主页（不同时间可能会变）
+      // 这里把你的问题编码进 URL（如果将来站点支持，会自动填入；不支持也不影响打开）
+      const url = "https://chatgpt.com/?q=" + encodeURIComponent(text);
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+
+    function openGemini(q){
+      const text = (q || "").trim();
+      // Gemini 同理：打开主页 + 带 query
+      const url = "https://gemini.google.com/app?q=" + encodeURIComponent(text);
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+
+    elBtnChatGPT?.addEventListener("click", () => openChatGPT(elChatGPTPrompt?.value));
+    elBtnGemini?.addEventListener("click", () => openGemini(elGeminiPrompt?.value));
+
+    elChatGPTPrompt?.addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        openChatGPT(elChatGPTPrompt.value);
+      }
+    });
+
+    elGeminiPrompt?.addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        openGemini(elGeminiPrompt.value);
+      }
+    });
+
+
+
+
+
     window.addEventListener("keydown", (e) => {
       if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
         e.preventDefault();
-        document.getElementById("q")?.focus();
+        document.getElementById("chatgptPrompt")?.focus(); // 优先 ChatGPT
       }
     });
 
