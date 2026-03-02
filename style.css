@@ -47,3 +47,29 @@ td, th {
   padding: 10px;
   border-bottom: 1px solid #334155;
 }
+
+.btn {
+  width: 180px;
+  height: 42px;
+  border-radius: 12px;
+}
+
+.searchRow .go {
+  width: 120px;
+  height: 44px;
+  flex: 0 0 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.searchRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.searchRow input {
+  width: auto;
+}
