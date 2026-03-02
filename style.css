@@ -54,6 +54,19 @@ td, th {
   border-radius: 12px;
 }
 
+/* Search rows */
+.searchRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.searchRow input {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
 .searchRow .go {
   width: 120px;
   height: 44px;
@@ -64,17 +77,8 @@ td, th {
   white-space: nowrap;
 }
 
-.searchRow {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.searchRow input {
-  width: auto;
-}
-
-.worldMapWrap{
+/* World Map Timezones */
+.worldMapWrap {
   position: relative;
   width: 100%;
   height: 420px;
@@ -84,22 +88,24 @@ td, th {
   background: radial-gradient(1200px 600px at 50% 30%, rgba(255,255,255,.06), rgba(0,0,0,.05));
 }
 
-.worldMapImg{
+.worldMapImg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: .55;
+  opacity: .75;
   filter: contrast(1.05) saturate(0.9);
+  z-index: 1;
 }
 
-.markers{
+.markers {
   position: absolute;
   inset: 0;
+  z-index: 2;
 }
 
-.marker{
+.marker {
   position: absolute;
   transform: translate(-50%, -50%);
   display: grid;
@@ -107,7 +113,7 @@ td, th {
   pointer-events: none;
 }
 
-.pin{
+.pin {
   width: 10px;
   height: 10px;
   border-radius: 999px;
@@ -115,7 +121,7 @@ td, th {
   box-shadow: 0 0 0 3px rgba(34,211,238,.18), 0 0 18px rgba(34,211,238,.55);
 }
 
-.bubble{
+.bubble {
   padding: 8px 10px;
   border-radius: 12px;
   background: rgba(2,6,23,.72);
@@ -126,61 +132,25 @@ td, th {
   line-height: 1.2;
 }
 
-.bubble b{ display:block; font-size: 12px; }
-.bubble small{ display:block; opacity:.8; font-size: 11px; margin-top: 2px; }
-.bubble .t{ display:block; margin-top: 6px; font-variant-numeric: tabular-nums; }
-
-.worldMapWrap{
-  position: relative;
-  width: 100%;
-  height: 420px;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,.10);
+.bubble b {
+  display: block;
+  font-size: 12px;
 }
 
-.worldMapImg{
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: .75;
-  z-index: 1;
+.bubble small {
+  display: block;
+  opacity: .8;
+  font-size: 11px;
+  margin-top: 2px;
 }
 
-.markers{
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-}
 
-.marker{
-  position: absolute;
-  transform: translate(-50%, -50%);
-  display: grid;
-  gap: 6px;
-  pointer-events: none;
-}
 
-.pin{
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--neon1, #22d3ee);
-  box-shadow: 0 0 0 3px rgba(34,211,238,.18), 0 0 18px rgba(34,211,238,.55);
-}
 
-.bubble{
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(2,6,23,.72);
-  border: 1px solid rgba(255,255,255,.10);
-  backdrop-filter: blur(6px);
-  max-width: 220px;
-  line-height: 1.2;
-}
 
-.bubble b{ display:block; font-size: 12px; }
-.bubble small{ display:block; opacity:.8; font-size: 11px; margin-top: 2px; }
-.bubble .t{ display:block; margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+.bubble .t {
+  display: block;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
