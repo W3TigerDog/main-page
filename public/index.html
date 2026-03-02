@@ -645,7 +645,13 @@
 
     function renderChartLine(series, coin, label){
       const c = ensureChart();
-      const labels = series.map(p => new Date(p.t).toLocaleTimeString());
+      const labels = series.map(p => {
+        const d = new Date(p.t);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      });
       const data = series.map(p => p.v);
 
       c.data.labels = labels;
