@@ -154,3 +154,17 @@ td, th {
   margin-top: 6px;
   font-variant-numeric: tabular-nums;
 }
+
+
+
+/* --- FIX: ensure markers overlay --- */
+.worldMapWrap { isolation: isolate; }
+
+.markers {
+  display: block;
+}
+
+.marker {
+  left: 0;
+  top: 0;
+}
