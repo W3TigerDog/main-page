@@ -230,6 +230,7 @@
 
       <div class="worldMapWrap" id="worldMapWrap">
         <img class="worldMapImg" src="/world-map.png" alt="World map" />
+        <div class="dayNight" id="dayNight" aria-hidden="true"></div>
         <div class="markers" id="markers"></div>
       </div>
 
@@ -491,6 +492,53 @@ function layoutMarkers(){
     el.style.top  = (p.y + offy) + "px";
   });
 }
+
+
+
+
+
+// ===== Day/Night Terminator (approx, based on UTC) =====
+const elDayNight = document.getElementById("dayNight");
+
+function updateDayNight(){
+  if(!elWorldMapWrap || !elDayNight) return;
+
+  const rect = elWorldMapWrap.getBoundingClientRect();
+  if(rect.width <= 0) return;
+
+  const now = new Date();
+
+  // UTC 小时（带分钟秒，连续滑动）
+  const utcHours =
+    now.getUTCHours() +
+    now.getUTCMinutes() / 60 +
+    now.getUTCSeconds() / 3600;
+
+  // 近似：太阳下方点经度 = 180° - UTC*15°
+  // 午夜经线（最暗中心） = 太阳经度 ± 180°
+  // 这里直接用 “午夜经线”：
+  let midnightLon = -utcHours * 15; // [-360,0]
+  // 归一化到 [-180,180)
+  midnightLon = ((midnightLon + 180) % 360 + 360) % 360 - 180;
+
+  // lon -> x 像素（等距近似）
+  const x = (midnightLon + 180) / 360 * rect.width;
+
+  // 写入 CSS 变量：暗区中心位置
+  elWorldMapWrap.style.setProperty("--nightX", `${x}px`);
+
+  // 软边宽度随尺寸微调
+  const soft = Math.max(90, Math.min(180, rect.width * 0.12));
+  elWorldMapWrap.style.setProperty("--nightSoft", `${soft}px`);
+}
+
+// 初次 & 定时更新
+updateDayNight();
+setInterval(updateDayNight, 10_000);
+window.addEventListener("resize", updateDayNight);
+
+// 图片加载后再更新一次（更准）
+document.querySelector(".worldMapImg")?.addEventListener("load", updateDayNight);
 
 
     function tickMarkers(){
