@@ -30,7 +30,13 @@ const COINS = [
 ];
 
 const FIAT = "usd";
-const FETCH_EVERY_MS = 10_000; // Fetch CoinGecko every 10s (rate limit possible)
+
+// 你原来是 10s，CoinGecko 很容易 429
+// 建议：本地开发 20-30s；部署看情况
+const BASE_FETCH_MS = 20_000;
+
+// 429/错误时最大退避到 5 分钟
+const MAX_BACKOFF_MS = 300_000;
 
 // ---------- STOCK INDICES (Chart only, via Stooq daily) ----------
 const INDEX_ASSETS = [
@@ -72,17 +78,10 @@ async function fetchStooqDailyRows(symbol) {
     .map(l => l.split(","))
     .filter(r => r.length >= 5);
 
-  // rows: [Date,Open,High,Low,Close,Volume]
   const out = rows
     .map(r => {
-      const t = Date.parse(r[0] + "T00:00:00Z"); // UTC 0点
-      return {
-        t,
-        o: Number(r[1]),
-        h: Number(r[2]),
-        l: Number(r[3]),
-        c: Number(r[4])
-      };
+      const t = Date.parse(r[0] + "T00:00:00Z");
+      return { t, o: Number(r[1]), h: Number(r[2]), l: Number(r[3]), c: Number(r[4]) };
     })
     .filter(x => Number.isFinite(x.t) && Number.isFinite(x.c));
 
@@ -93,41 +92,32 @@ async function fetchStooqDailyRows(symbol) {
 function seriesFromDaily(rows, days) {
   const end = Date.now();
   const start = end - days * 24 * 60 * 60 * 1000;
-  return rows
-    .filter(r => r.t >= start && r.t <= end)
-    .map(r => ({ t: r.t, v: r.c }));
+  return rows.filter(r => r.t >= start && r.t <= end).map(r => ({ t: r.t, v: r.c }));
 }
 
-// 把日线聚合成周/月 OHLC
 function bucketKey(t, mode) {
   const d = new Date(t);
   const y = d.getUTCFullYear();
   const day = d.getUTCDate();
 
   if (mode === "1w") {
-    // 周一作为周起点（简化）
     const dt = new Date(Date.UTC(y, d.getUTCMonth(), day));
-    const wd = dt.getUTCDay() || 7; // Sun=0 -> 7
+    const wd = dt.getUTCDay() || 7;
     dt.setUTCDate(dt.getUTCDate() - (wd - 1));
     return dt.getTime();
   }
 
-  if (mode === "1mo") {
-    return Date.UTC(y, d.getUTCMonth(), 1);
-  }
-
-  // default 1d
+  if (mode === "1mo") return Date.UTC(y, d.getUTCMonth(), 1);
   return Date.UTC(y, d.getUTCMonth(), day);
 }
 
-function ohlcFromDaily(rows, mode /* "1d"|"1w"|"1mo" */) {
-  const map = new Map(); // key -> candle
+function ohlcFromDaily(rows, mode) {
+  const map = new Map();
   for (const r of rows) {
     const k = bucketKey(r.t, mode);
     const cur = map.get(k);
-    if (!cur) {
-      map.set(k, { t: k, o: r.o, h: r.h, l: r.l, c: r.c });
-    } else {
+    if (!cur) map.set(k, { t: k, o: r.o, h: r.h, l: r.l, c: r.c });
+    else {
       cur.h = Math.max(cur.h, r.h);
       cur.l = Math.min(cur.l, r.l);
       cur.c = r.c;
@@ -152,7 +142,7 @@ await db.exec(`
 
   CREATE TABLE IF NOT EXISTS ticks (
     coin TEXT NOT NULL,
-    ts   INTEGER NOT NULL, -- ms since epoch
+    ts   INTEGER NOT NULL,
     price REAL NOT NULL,
     PRIMARY KEY (coin, ts)
   );
@@ -169,16 +159,30 @@ await db.exec(`
 let latest = {
   ok: false,
   ts: Date.now(),
-  prices: {}, // { coinId: { price, chg24 } }
+  prices: {},
   error: null
 };
 
-function nowMs() {
-  return Date.now();
+function nowMs() { return Date.now(); }
+function coinIds() { return COINS.map(c => c.id); }
+
+function broadcast(obj) {
+  const msg = JSON.stringify(obj);
+  for (const client of wss.clients) {
+    if (client.readyState === 1) client.send(msg);
+  }
 }
 
-function coinIds() {
-  return COINS.map(c => c.id);
+// ---------- CoinGecko fetch with backoff ----------
+let fetchTimer = null;
+let backoffMs = BASE_FETCH_MS;
+
+function scheduleNextFetch(delayMs) {
+  clearTimeout(fetchTimer);
+  fetchTimer = setTimeout(async () => {
+    await fetchCoinGecko();
+    scheduleNextFetch(backoffMs);
+  }, delayMs);
 }
 
 async function fetchCoinGecko() {
@@ -190,6 +194,16 @@ async function fetchCoinGecko() {
 
   try {
     const res = await fetch(url.toString(), { headers: { accept: "application/json" } });
+
+    // 429: 退避
+    if (res.status === 429) {
+      backoffMs = Math.min(MAX_BACKOFF_MS, Math.floor(backoffMs * 1.8));
+      latest = { ...latest, ok: false, error: "HTTP 429 (rate limited)", ts: nowMs() };
+      broadcast({ type: "tick", payload: latest });
+      console.log("CoinGecko rate limited. Backoff to", backoffMs, "ms");
+      return;
+    }
+
     if (!res.ok) throw new Error("HTTP " + res.status);
 
     const data = await res.json();
@@ -218,27 +232,22 @@ async function fetchCoinGecko() {
     const gainers = await getTopGainers(8);
     broadcast({ type: "gainers", payload: { ts, gainers } });
 
+    // 成功后回到基础间隔
+    backoffMs = BASE_FETCH_MS;
+
     console.log("Fetched prices @", new Date(ts).toISOString());
   } catch (e) {
+    // 网络/解析错误也退避一点点
+    backoffMs = Math.min(MAX_BACKOFF_MS, Math.floor(backoffMs * 1.3));
     latest = { ...latest, ok: false, error: String(e?.message || e), ts: nowMs() };
     broadcast({ type: "tick", payload: latest });
-    console.log("Fetch error:", latest.error);
-  }
-}
-
-function broadcast(obj) {
-  const msg = JSON.stringify(obj);
-  for (const client of wss.clients) {
-    if (client.readyState === 1) client.send(msg);
+    console.log("Fetch error:", latest.error, "| backoff:", backoffMs);
   }
 }
 
 // ---------- Aggregations ----------
-function roundTo(n, stepMs) {
-  return Math.floor(n / stepMs) * stepMs;
-}
+function roundTo(n, stepMs) { return Math.floor(n / stepMs) * stepMs; }
 
-// returns [{t, v}]
 async function getSeries(coin, windowMs, bucketMs) {
   const end = nowMs();
   const start = end - windowMs;
@@ -249,10 +258,7 @@ async function getSeries(coin, windowMs, bucketMs) {
   );
 
   const map = new Map();
-  for (const r of rows) {
-    const b = roundTo(r.ts, bucketMs);
-    map.set(b, r.price);
-  }
+  for (const r of rows) map.set(roundTo(r.ts, bucketMs), r.price);
 
   const points = [];
   const firstBucket = roundTo(start, bucketMs);
@@ -263,11 +269,9 @@ async function getSeries(coin, windowMs, bucketMs) {
     if (map.has(t)) last = map.get(t);
     if (last !== null) points.push({ t, v: last });
   }
-
   return points;
 }
 
-// 24h OHLC for crypto ticks
 async function getOHLC(coin, intervalMs) {
   const end = nowMs();
   const start = end - 24 * 60 * 60 * 1000;
@@ -281,19 +285,16 @@ async function getOHLC(coin, intervalMs) {
   for (const r of rows) {
     const b = roundTo(r.ts, intervalMs);
     const cur = buckets.get(b);
-    if (!cur) {
-      buckets.set(b, { t: b, o: r.price, h: r.price, l: r.price, c: r.price });
-    } else {
+    if (!cur) buckets.set(b, { t: b, o: r.price, h: r.price, l: r.price, c: r.price });
+    else {
       cur.h = Math.max(cur.h, r.price);
       cur.l = Math.min(cur.l, r.price);
       cur.c = r.price;
     }
   }
-
   return [...buckets.values()].sort((a, b) => a.t - b.t);
 }
 
-// Top gainers (24h) based on DB
 async function getTopGainers(limit = 10) {
   const end = nowMs();
   const start = end - 24 * 60 * 60 * 1000;
@@ -312,13 +313,7 @@ async function getTopGainers(limit = 10) {
     if (!first?.price || !last?.price) continue;
     const pct = ((last.price - first.price) / first.price) * 100;
 
-    gainers.push({
-      coin: c.id,
-      symbol: c.symbol,
-      name: c.name,
-      pct,
-      last: last.price
-    });
+    gainers.push({ coin: c.id, symbol: c.symbol, name: c.name, pct, last: last.price });
   }
 
   gainers.sort((a, b) => b.pct - a.pct);
@@ -330,18 +325,13 @@ app.get("/api/series", async (req, res) => {
   const coin = String(req.query.coin || "bitcoin");
   const tf = String(req.query.tf || "1m");
 
-  // ✅ Index branch (Stooq daily)
   if (isIndexCoin(coin)) {
-    const days =
-      tf === "5m" ? 180 :
-      tf === "1h" ? 365 :
-                    30;
+    const days = tf === "5m" ? 180 : tf === "1h" ? 365 : 30;
     const rows = await fetchStooqDailyRows(coin);
     const series = seriesFromDaily(rows, days);
     return res.json({ coin, tf, series, source: "stooq" });
   }
 
-  // ✅ Crypto branch (existing)
   const map = {
     "1m": { windowMs: 60_000, bucketMs: 1_000 },
     "5m": { windowMs: 300_000, bucketMs: 5_000 },
@@ -356,18 +346,13 @@ app.get("/api/ohlc", async (req, res) => {
   const coin = String(req.query.coin || "bitcoin");
   const interval = String(req.query.interval || "5m");
 
-  // ✅ Index branch (daily -> 1d/1w/1mo)
   if (isIndexCoin(coin)) {
-    const mode =
-      interval === "1m" ? "1d" :
-      interval === "15m" ? "1mo" :
-                           "1w"; // default 5m -> 1w
+    const mode = interval === "1m" ? "1d" : interval === "15m" ? "1mo" : "1w";
     const rows = await fetchStooqDailyRows(coin);
     const candles = ohlcFromDaily(rows, mode);
     return res.json({ coin, interval, candles, source: "stooq" });
   }
 
-  // ✅ Crypto branch (existing)
   const intervalMs = interval === "1m" ? 60_000 : interval === "15m" ? 900_000 : 300_000;
   const candles = await getOHLC(coin, intervalMs);
   res.json({ coin, interval, candles, source: "sqlite" });
@@ -381,21 +366,14 @@ app.get("/api/gainers", async (req, res) => {
 
 // ---------- WebSocket ----------
 wss.on("connection", async (ws) => {
-  // snapshot
   ws.send(JSON.stringify({
     type: "snapshot",
-    payload: {
-      latest,
-      coins: COINS,
-      fiat: FIAT
-    }
+    payload: { latest, coins: COINS, fiat: FIAT }
   }));
 
-  // gainers
   const gainers = await getTopGainers(8);
   ws.send(JSON.stringify({ type: "gainers", payload: { ts: nowMs(), gainers } }));
 
-  // series_init (crypto default) - harmless if frontend ignores it
   const defaultCoin = "bitcoin";
   const s1m = await getSeries(defaultCoin, 60_000, 1_000);
   const s5m = await getSeries(defaultCoin, 300_000, 5_000);
@@ -409,31 +387,22 @@ wss.on("connection", async (ws) => {
     let msg;
     try { msg = JSON.parse(buf.toString("utf8")); } catch { return; }
 
-    // ---- get_series ----
     if (msg?.type === "get_series") {
       const coin = String(msg.coin || "bitcoin");
       const tf = String(msg.tf || "1m");
 
-      // ✅ Index via Stooq daily
       if (isIndexCoin(coin)) {
-        const days =
-          tf === "5m" ? 180 :
-          tf === "1h" ? 365 :
-                        30;
+        const days = tf === "5m" ? 180 : tf === "1h" ? 365 : 30;
         try {
           const rows = await fetchStooqDailyRows(coin);
           const series = seriesFromDaily(rows, days);
           ws.send(JSON.stringify({ type: "series", payload: { coin, tf, series } }));
         } catch (e) {
-          ws.send(JSON.stringify({
-            type: "series",
-            payload: { coin, tf, series: [], error: String(e?.message || e) }
-          }));
+          ws.send(JSON.stringify({ type: "series", payload: { coin, tf, series: [], error: String(e?.message || e) } }));
         }
         return;
       }
 
-      // ✅ Crypto from SQLite ticks
       const cfg =
         tf === "5m" ? { windowMs: 300_000, bucketMs: 5_000 } :
         tf === "1h" ? { windowMs: 3_600_000, bucketMs: 60_000 } :
@@ -444,36 +413,25 @@ wss.on("connection", async (ws) => {
       return;
     }
 
-    // ---- get_ohlc ----
     if (msg?.type === "get_ohlc") {
       const coin = String(msg.coin || "bitcoin");
       const interval = String(msg.interval || "5m");
 
-      // ✅ Index: map existing buttons -> 1d / 1w / 1mo
       if (isIndexCoin(coin)) {
-        const mode =
-          interval === "1m" ? "1d" :
-          interval === "15m" ? "1mo" :
-                               "1w"; // default 5m -> 1w
+        const mode = interval === "1m" ? "1d" : interval === "15m" ? "1mo" : "1w";
         try {
           const rows = await fetchStooqDailyRows(coin);
           const candlesAll = ohlcFromDaily(rows, mode);
-
-          // 防止太大：只保留最近 24 个月
           const cutoff = Date.now() - 730 * 24 * 60 * 60 * 1000;
           const candles = candlesAll.filter(c => c.t >= cutoff);
 
           ws.send(JSON.stringify({ type: "ohlc", payload: { coin, interval, candles } }));
         } catch (e) {
-          ws.send(JSON.stringify({
-            type: "ohlc",
-            payload: { coin, interval, candles: [], error: String(e?.message || e) }
-          }));
+          ws.send(JSON.stringify({ type: "ohlc", payload: { coin, interval, candles: [], error: String(e?.message || e) } }));
         }
         return;
       }
 
-      // ✅ Crypto: 24h candles from SQLite ticks
       const intervalMs = interval === "1m" ? 60_000 : interval === "15m" ? 900_000 : 300_000;
       const candles = await getOHLC(coin, intervalMs);
       ws.send(JSON.stringify({ type: "ohlc", payload: { coin, interval, candles } }));
@@ -488,13 +446,15 @@ wss.on("connection", async (ws) => {
 
 
 
-
-
-
-
 // ---------- Start ----------
 server.listen(PORT, () => {
   console.log("Server running on", PORT);
-  fetchCoinGecko();
-  setInterval(fetchCoinGecko, FETCH_EVERY_MS);
+
+  // 立即抓一次，然后用“自适应退避调度”
+  fetchCoinGecko().then(() => {
+    backoffMs = BASE_FETCH_MS;
+    scheduleNextFetch(backoffMs);
+  }).catch(() => {
+    scheduleNextFetch(backoffMs);
+  });
 });

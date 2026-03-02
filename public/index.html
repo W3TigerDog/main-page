@@ -439,18 +439,37 @@
     }
 
     function ensureMarkers(){
-      if(!elMarkers) return;
-      elMarkers.innerHTML = MAP_TZS.map((z, i) => `
-        <div class="marker" data-i="${i}">
-          <div class="pin"></div>
-          <div class="bubble">
-            <b>${escapeHtml(z.label)}</b>
-            <small>${escapeHtml(z.tz)}</small>
-            <span class="t" id="t_${i}">--/--/---- --:--:--</span>
-          </div>
+  if(!elMarkers) return;
+
+  // 每个城市一个方向偏移
+  const OFFSETS = {
+    "Los Angeles": { x: -80, y: -20 },
+    "Chicago":     { x:  60, y: -40 },
+    "New York":    { x:  80, y: -20 },
+    "London":      { x:  60, y: -30 },
+    "Paris":       { x: -80, y: -20 },
+    "Dubai":       { x:  60, y: -10 },
+    "Beijing":     { x: -90, y: -30 },
+    "Tokyo":       { x:  70, y: -20 },
+    "Singapore":   { x: -90, y:  10 },
+    "Sydney":      { x:  70, y:  10 }
+  };
+
+  elMarkers.innerHTML = MAP_TZS.map((z, i) => {
+    const off = OFFSETS[z.label] || { x: 0, y: -30 };
+
+    return `
+      <div class="marker" data-i="${i}" data-offx="${off.x}" data-offy="${off.y}">
+        <div class="pin"></div>
+        <div class="bubble">
+          <b>${escapeHtml(z.label)}</b>
+          <small>${escapeHtml(z.tz)}</small>
+          <span class="t" id="t_${i}">--/--/---- --:--:--</span>
         </div>
-      `).join("");
-    }
+      </div>
+    `;
+  }).join("");
+}
 
     function layoutMarkers(){
       if(!elWorldMapWrap || !elMarkers) return;
@@ -459,8 +478,11 @@
         const i = Number(el.getAttribute("data-i"));
         const z = MAP_TZS[i];
         const p = project(z.lat, z.lon, rect);
-        el.style.left = p.x + "px";
-        el.style.top  = p.y + "px";
+        const offx = Number(el.dataset.offx || 0);
+const offy = Number(el.dataset.offy || 0);
+
+el.style.left = (p.x + offx) + "px";
+el.style.top  = (p.y + offy) + "px";
       });
     }
 
