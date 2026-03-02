@@ -637,7 +637,14 @@
           maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
           plugins: { legend: { display: true } },
-          scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { ticks: { maxTicksLimit: 6 } } }
+          scales: {
+            x: { ticks: { maxTicksLimit: 10 } },
+            y: {
+              type: "linear",
+              beginAtZero: false,
+              ticks: { maxTicksLimit: 6 }
+            }
+          }
         }
       });
       return chart;
@@ -652,7 +659,7 @@
         const dd = String(d.getDate()).padStart(2, "0");
         return `${yyyy}-${mm}-${dd}`;
       });
-      const data = series.map(p => p.v);
+      const data = series.map(p => Number(p.v)).filter(n => Number.isFinite(n));
 
       c.data.labels = labels;
       c.data.datasets[0].data = data;
